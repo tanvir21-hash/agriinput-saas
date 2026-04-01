@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AgriInput SaaS v2
 
-## Getting Started
+A multi-tenant, offline-first B2B SaaS platform for agricultural field organizations.
 
-First, run the development server:
+## Who uses this
+- **Field officers** — generate fertilizer plans during farm visits, even offline
+- **Org admins** — manage officers, view analytics, export reports
+- **Paying customers** — NGOs, DAE offices, agribusinesses (not the farmer)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Tech stack
+- Next.js 16 + TypeScript (strict)
+- Supabase (PostgreSQL + Auth + RLS)
+- Tailwind CSS
+- Dexie.js (IndexedDB for offline storage)
+- next-pwa (service worker)
+- react-i18next (Bangla + English)
+- Vitest (unit tests)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Folder structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Folder | Purpose |
+|--------|---------|
+| src/app | Next.js App Router pages and layouts |
+| src/features | Feature modules (auth, farms, plans, dashboard) |
+| src/engine | Pure TypeScript calculation engine, zero React dependency |
+| src/components/ui | Shared reusable UI components |
+| src/lib | Supabase client, utility functions |
+| src/types | Shared TypeScript types and interfaces |
+| src/constants | Crop rules, soil types, app-wide constants |
+| src/offline | Dexie.js schema, sync queue, IndexedDB logic |
+| src/i18n | Translation files en and bn |
+| src/db | Supabase auto-generated database types |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Multi-tenancy
+Every database table includes org_id. Row-Level Security is enforced
+at the database level. Never rely on frontend filtering for data isolation.
 
-## Learn More
+## Offline-first
+Plans created offline are stored in IndexedDB via Dexie.js and synced
+to Supabase when connectivity is restored via a background sync queue.
 
-To learn more about Next.js, take a look at the following resources:
+## Development
+pnpm dev        - start dev server
+pnpm test       - run unit tests
+pnpm typecheck  - TypeScript strict check
+pnpm lint       - ESLint
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Environment variables
+Copy .env.example to .env.local and fill in your Supabase credentials.

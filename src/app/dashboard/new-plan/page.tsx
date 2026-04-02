@@ -1,8 +1,10 @@
 'use client'
-
+import { useEffect, useState } from 'react'
 import { usePlanWizard } from '@/features/plans/usePlanWizard'
+import { useOnlineSync } from '@/offline/useOnlineSync'
 import { CropType, SoilType } from '@/engine/types'
 import { CROP_RULES } from '@/engine/cropRules'
+import { supabase } from '@/lib/supabase'
 
 const SOIL_TYPES: { value: SoilType; label: string; label_bn: string }[] = [
   { value: 'sandy', label: 'Sandy',  label_bn: 'বালি মাটি' },
@@ -12,13 +14,32 @@ const SOIL_TYPES: { value: SoilType; label: string; label_bn: string }[] = [
 ]
 
 export default function NewPlanPage() {
+  const [orgId, setOrgId] = useState<string>('local')
+
+  // Get real org_id from Supabase profile
+  useEffect(() => {
+    async function fetchOrgId() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id')
+        .eq('id', user.id)
+        .single()
+      if (profile?.org_id) setOrgId(profile.org_id)
+    }
+    fetchOrgId()
+  }, [])
+
+  // Trigger sync when coming back online
+  useOnlineSync()
+
   const { state, setCrop, setArea, setSoilType, calculate, reset, goBack } =
-    usePlanWizard()
+    usePlanWizard(orgId)
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-lg mx-auto px-4 py-8">
-
         {/* Header */}
         <div className="mb-6">
           <a href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
@@ -143,7 +164,7 @@ export default function NewPlanPage() {
           </div>
         )}
 
-        {/* Step 4 — Soil test (optional) */}
+        {/* Step 4 — Soil test */}
         {state.step === 4 && (
           <div>
             <h2 className="text-lg font-semibold text-gray-800 mb-1">
@@ -216,17 +237,19 @@ export default function NewPlanPage() {
           <div>
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
               <h2 className="font-bold text-green-800 text-lg">
-                Fertilizer Plan Ready
+                Fertilizer Plan Ready ✓
               </h2>
               <p className="text-green-700 text-sm">
-                {CROP_RULES[state.result.crop].name_en} —{' '}
-                {CROP_RULES[state.result.crop].name_bn}
+                {CROP_RULES[state.result.crop as CropType]?.name_en} —{' '}
+                {CROP_RULES[state.result.crop as CropType]?.name_bn}
               </p>
               <p className="text-green-700 text-sm">
                 Area: {state.result.area_bigha} bigha
               </p>
+              <p className="text-xs text-green-600 mt-1">
+                ✓ Saved locally — will sync when online
+              </p>
             </div>
-
             {state.result.warnings.length > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                 {state.result.warnings.map((w, i) => (
@@ -234,7 +257,6 @@ export default function NewPlanPage() {
                 ))}
               </div>
             )}
-
             <div className="space-y-3 mb-4">
               {state.result.recommendations.map((rec, i) => (
                 <div key={i} className="bg-white border border-gray-200 rounded-lg p-4">
@@ -262,14 +284,12 @@ export default function NewPlanPage() {
                 </div>
               ))}
             </div>
-
             <div className="bg-gray-100 rounded-lg p-3 mb-4">
               <p className="text-sm text-gray-600">Estimated total cost</p>
               <p className="text-xl font-bold text-gray-900">
                 ৳ {state.result.total_cost_estimate_bdt.toLocaleString()}
               </p>
             </div>
-
             <button
               onClick={reset}
               className="w-full py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"

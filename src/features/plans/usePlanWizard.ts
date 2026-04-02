@@ -21,7 +21,7 @@ interface WizardState {
   savedPlanId: string | null
 }
 
-export function usePlanWizard() {
+export function usePlanWizard(org_id: string) {
   const [state, setState] = useState<WizardState>({
     step: 1,
     crop: null,
@@ -61,11 +61,11 @@ export function usePlanWizard() {
 
       const result = calculateFertilizerPlan(input)
 
-      // Save to IndexedDB immediately — works offline
+      // Save to IndexedDB with real org_id
       const planId = uuidv4()
       await db.plans.add({
         id: planId,
-        org_id: 'local',
+        org_id: org_id,
         farm_id: null,
         farmer_name: 'Unknown',
         area_bigha: state.area_bigha,
@@ -115,7 +115,8 @@ export function usePlanWizard() {
   function goBack() {
     setState(prev => ({
       ...prev,
-      step: prev.step === 'result' ? 4 : Math.max(1, Number(prev.step) - 1) as WizardStep,
+      step: prev.step === 'result' ? 4
+        : Math.max(1, Number(prev.step) - 1) as WizardStep,
     }))
   }
 

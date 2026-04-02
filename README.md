@@ -1,49 +1,166 @@
 # AgriInput SaaS v2
 
-A multi-tenant, offline-first B2B SaaS platform for agricultural field organizations.
+A production-grade, multi-tenant SaaS platform for NGOs, DAE offices, and agricultural field organizations. Field officers generate farm-specific fertilizer plans during field visits — even without internet connectivity.
 
-## Who uses this
-- **Field officers** — generate fertilizer plans during farm visits, even offline
-- **Org admins** — manage officers, view analytics, export reports
-- **Paying customers** — NGOs, DAE offices, agribusinesses (not the farmer)
+🌐 **Live Demo:** https://agriinput-saas-j5y1ig3wy-tanvir21-hashs-projects.vercel.app
+📧 **Demo Login:** admin2@test.com / Demo@12345
 
-## Tech stack
-- Next.js 16 + TypeScript (strict)
-- Supabase (PostgreSQL + Auth + RLS)
-- Tailwind CSS
-- Dexie.js (IndexedDB for offline storage)
-- next-pwa (service worker)
-- react-i18next (Bangla + English)
-- Vitest (unit tests)
+---
 
-## Folder structure
+## What This Solves
 
-| Folder | Purpose |
-|--------|---------|
-| src/app | Next.js App Router pages and layouts |
-| src/features | Feature modules (auth, farms, plans, dashboard) |
-| src/engine | Pure TypeScript calculation engine, zero React dependency |
-| src/components/ui | Shared reusable UI components |
-| src/lib | Supabase client, utility functions |
-| src/types | Shared TypeScript types and interfaces |
-| src/constants | Crop rules, soil types, app-wide constants |
-| src/offline | Dexie.js schema, sync queue, IndexedDB logic |
-| src/i18n | Translation files en and bn |
-| src/db | Supabase auto-generated database types |
+Field officers in Bangladesh visit remote farms daily. They need to:
+- Generate fertilizer recommendations on the spot
+- Work without reliable internet
+- Report back to their organization with traceable data
 
-## Multi-tenancy
-Every database table includes org_id. Row-Level Security is enforced
-at the database level. Never rely on frontend filtering for data isolation.
+AgriInput SaaS solves all three.
 
-## Offline-first
-Plans created offline are stored in IndexedDB via Dexie.js and synced
-to Supabase when connectivity is restored via a background sync queue.
+---
 
-## Development
-pnpm dev        - start dev server
-pnpm test       - run unit tests
-pnpm typecheck  - TypeScript strict check
-pnpm lint       - ESLint
+## Key Features
 
-## Environment variables
-Copy .env.example to .env.local and fill in your Supabase credentials.
+- **Multi-tenant architecture** — each organization sees only their own data
+- **Offline-first PWA** — works without internet, syncs when reconnected
+- **Fertilizer calculation engine** — pure TypeScript, fully tested
+- **Bilingual UI** — English + Bangla (বাংলা)
+- **Role-based access** — org_admin, field_officer, viewer
+- **Row-Level Security** — enforced at database level via Supabase RLS
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Reason |
+|---|---|---|
+| Frontend | Next.js 16 + TypeScript | App Router, SSR, type safety |
+| Database | Supabase (PostgreSQL) | RLS, Auth, realtime |
+| Auth | Supabase Auth | JWT with org_id claims |
+| Offline DB | Dexie.js (IndexedDB) | Typed, offline-first storage |
+| PWA | @ducanh2912/next-pwa | Service worker, caching |
+| Styling | Tailwind CSS | Mobile-first, fast |
+| Testing | Vitest | Calculation engine unit tests |
+| Deployment | Vercel | CI/CD from GitHub |
+
+---
+
+## Architecture
+```
+┌─────────────────────────────────────────┐
+│           Field Officer (Mobile)         │
+│                                          │
+│  Next.js PWA  ──►  Dexie.js (IndexedDB) │
+│       │                    │             │
+│       │              Sync Queue          │
+│       │                    │             │
+└───────┼────────────────────┼─────────────┘
+        │                    │
+        ▼                    ▼ (on reconnect)
+┌───────────────────────────────────────┐
+│           Supabase Cloud              │
+│                                       │
+│  PostgreSQL + RLS + Auth              │
+│                                       │
+│  organizations                        │
+│  profiles (org_id, role)              │
+│  farms (org_id)                       │
+│  fertilizer_plans (org_id)            │
+└───────────────────────────────────────┘
+```
+
+---
+
+## Multi-Tenancy Strategy
+
+Every table has `org_id`. Supabase Row-Level Security policies enforce data isolation at the database level — no tenant can ever see another tenant's data, regardless of frontend code.
+```sql
+-- Example RLS policy
+CREATE POLICY "org_isolation" ON farms
+  FOR ALL USING (
+    org_id = (
+      SELECT org_id FROM profiles WHERE id = auth.uid()
+    )
+  );
+```
+
+---
+
+## Offline-First Strategy
+
+1. Field officer opens app → service worker caches app shell
+2. Officer visits farm without internet → app works normally
+3. New plan is saved to IndexedDB via Dexie.js
+4. Plan is added to sync queue with `synced: false`
+5. When internet returns → background sync uploads to Supabase
+6. Plan marked as `synced: true`
+
+---
+
+## Calculation Engine
+
+Pure TypeScript engine with no React dependency. Fully unit tested with Vitest.
+```bash
+pnpm test
+```
+
+---
+
+## Local Development
+```bash
+# Clone the repo
+git clone https://github.com/tanvir21-hash/agriinput-saas.git
+cd agriinput-saas
+
+# Install dependencies
+pnpm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Add your Supabase URL and anon key
+
+# Run development server
+pnpm dev
+```
+
+---
+
+## Project Structure
+```
+src/
+├── app/                  # Next.js App Router pages
+│   ├── auth/             # Login, signup
+│   └── dashboard/        # Main dashboard, plan wizard
+├── engine/               # Fertilizer calculation engine (pure TS)
+│   ├── fertilizerEngine.ts
+│   ├── fertilizerEngine.test.ts
+│   ├── cropRules.ts
+│   └── types.ts
+├── offline/              # Offline-first layer
+│   ├── db.ts             # Dexie.js IndexedDB schema
+│   └── syncQueue.ts      # Background sync queue
+├── lib/                  # Supabase clients
+└── types/                # Shared TypeScript types
+```
+
+---
+
+## 6-Week Build Journey
+
+| Week | Focus |
+|---|---|
+| 1-2 | Next.js setup, Supabase, multi-tenancy, RLS |
+| 3 | Fertilizer calculation engine + Vitest tests |
+| 4 | 4-step plan wizard, Bangla support, PDF export |
+| 5 | PWA conversion, Dexie.js, service worker, sync queue |
+| 6 | Demo data, dashboard UI, Vercel deployment |
+
+---
+
+## Author
+
+Built by **Tanvir** as a portfolio project demonstrating:
+- Multi-tenant SaaS architecture
+- Offline-first PWA design
+- TypeScript engineering discipline
+- Real-world agricultural domain logic
+- B2B product thinking
